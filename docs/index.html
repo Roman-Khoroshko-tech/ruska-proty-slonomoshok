@@ -49,7 +49,7 @@
     h1 { font-size: 1.9rem; }
     .actions { bottom: max(5%, env(safe-area-inset-bottom)); }
   }
-.bug-guide {display:grid;gap:.6rem;padding:.85rem}.bug-entry {display:grid;grid-template-columns:82px 1fr;align-items:center;gap:.7rem;padding:.5rem;border-radius:10px;background:#2a2038}.bug-entry canvas {width:82px;height:62px}.bug-entry h3,.bug-entry p {margin:0}.bug-entry p {font-size:.88rem;color:#e5d3e8}
+.bug-guide {display:grid;gap:.6rem;padding:.85rem}.bug-entry {display:grid;grid-template-columns:82px 1fr;align-items:center;gap:.7rem;padding:.5rem;border-radius:10px;background:#2a2038}.bug-entry canvas {width:82px;height:62px}.bug-entry.size-preview {grid-template-columns:110px 1fr}.bug-entry.size-preview canvas {width:110px;height:140px}.bug-entry h3,.bug-entry p {margin:0}.bug-entry p {font-size:.88rem;color:#e5d3e8}
 </style>
 </head>
 <body>
@@ -100,6 +100,7 @@ const lightsOn = 1.8;
 const lightsOff = 4.8;
 const flameVibration = [130, 65, 160, 55, 170, 60, 190, 65, 210, 70, 220, 70, 260, 70, 235];
 const bugColors = {
+  neutral: { wing: '#d7d0e1', eye: '#fff0bd', body: '#7e718b' },
   straight: { wing: '#c8d6f4', eye: '#fff0bd' },
   pass: { wing: '#f4b475', eye: '#fff0bd' },
   curved: { wing: '#f4b475', eye: '#fff0bd' },
@@ -365,6 +366,10 @@ function resize() {
       }
     }
     sparks = [];
+  }
+  if (bugDialog.open) {
+    document.querySelector('#bug-guide').replaceChildren();
+    renderBugGuide();
   }
 }
 
@@ -944,10 +949,6 @@ function play(dt, elapsed = dt) {
       updateHud();
       continue;
     }
-    if (hitEffect > 0) {
-      burst(bug.x, bug.y);
-      continue;
-    }
     lives--;
     sound(lives === 0 ? 'annoyed' : 'hurt');
     hitEffect = hitCooldown;
@@ -1054,6 +1055,9 @@ function renderBugGuide() {
       ['Мошкомуха', 'chaotic', 'Петляє на шляху до Руськи.'],
       ['Мошколіна', 'pirouette', 'Робить піруети на шляху до Руськи.'],
       ['Підломошка', 'curved', 'Схожа на Мимомошку. Спершу летить повз, потім завертає до Руськи.'],
+      ['Мошколікар', 'medic', 'Рідкісна рожева мошка. Дотик до Руськи відновлює одне сердечко. Поява лише за неповного здоров’я.'],
+      ['Мошкоблошка', 'flea', 'Після влучання сповільнює всіх мошок на 3 секунди.'],
+      ['Мимопідломошка', 'orbit', 'Кружляє навколо Руськи й пролітає далі. Руська від неї не втрачає сердечок.'],
     ]],
     ['Розміри', [
       ['Мінімошка', 'straight', '1 влучання.', 'small'],
@@ -1061,23 +1065,19 @@ function renderBugGuide() {
       ['Мошкозавр', 'pirouette', '4 влучання. Може мати будь-який із п’яти типів польоту.', 'giant'],
       ['Мамамошка', 'straight', '6 влучань. У короні й завжди прямує до Руськи.', 'queen'],
       ['Слономошка', 'curved', '15 влучань. Здоров’я швидко відновлюється між ударами. Завжди прямує до Руськи.', 'elephant'],
-    ]],
-    ['Особлива поведінка', [
-      ['Мошколікар', 'medic', 'Рідкісна рожева мошка. Дотик до Руськи відновлює одне сердечко. Поява лише за неповного здоров’я.'],
-      ['Мошкоблошка', 'flea', 'Після влучання сповільнює всіх мошок на 3 секунди.'],
-      ['Мимопідломошка', 'orbit', 'Кружляє навколо Руськи й пролітає далі. Руська від неї не втрачає сердечок.'],
     ]]
   ];
-  for (const [title, items] of entries) {
+  for (const [sectionTitle, items] of entries) {
     const heading = document.createElement('h3');
-    heading.textContent = title;
+    heading.textContent = sectionTitle;
     guide.append(heading);
     for (const [name, type, description, sizeClass = 'small'] of items) {
       const card = document.createElement('article');
-      card.className = 'bug-entry';
+      const sizePreview = sectionTitle === 'Розміри';
+      card.className = sizePreview ? 'bug-entry size-preview' : 'bug-entry';
       const preview = document.createElement('canvas');
-      preview.width = 164;
-      preview.height = 124;
+      preview.width = sizePreview ? 220 : 164;
+      preview.height = sizePreview ? 280 : 124;
       preview.setAttribute('aria-hidden', 'true');
       const copy = document.createElement('div');
       const title = document.createElement('h3');
@@ -1091,9 +1091,9 @@ function renderBugGuide() {
       const target = preview.getContext('2d');
       if (!target) continue;
       const hits = bugSizes[sizeClass].hits;
-      const bug = { x: 0, y: 0, type, sizeClass, hits, maxHits: hits, angle: 0, phase: 0 };
-      const zoom = Math.min(3.1, 3.6 / bugSize(bug)) / scale;
-      target.setTransform(zoom, 0, 0, zoom, 73, sizeClass === 'queen' ? 76 : 58);
+      const bug = { x: 0, y: 0, type: sizePreview ? 'neutral' : type, sizeClass, hits, maxHits: hits, angle: 0, phase: 0 };
+      const zoom = sizePreview ? 2 : Math.min(3.1, 3.6 / bugSize(bug)) / scale;
+      target.setTransform(zoom, 0, 0, zoom, sizePreview ? 110 : 73, sizePreview ? 140 : sizeClass === 'queen' ? 76 : 58);
       try {
         ctx = target;
         drawBug(bug, true);
