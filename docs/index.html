@@ -17,8 +17,9 @@
   [hidden] { display: none !important; }
   .hud, .panel { position: absolute; pointer-events: none; }
   .hud { inset: calc(18px + env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) auto max(20px, env(safe-area-inset-left)); display: flex; justify-content: space-between; align-items: center; }
-  .hearts { font-size: 1.65rem; letter-spacing: .16em; color: #ff7d98; }
-  .empty { color: #796785; }
+  .hearts { display: flex; align-items: center; gap: 4px; color: #ff7d98; flex: none; }
+  .heart { display: block; flex: none; width: 1.55rem; height: 1.55rem; fill: currentColor; }
+  .heart.empty { fill: none; stroke: #796785; stroke-width: 2; stroke-linejoin: round; }
   .stat { color: #fff4fa; font-weight: 700; font-variant-numeric: tabular-nums; text-shadow: 0 2px 9px #100d21; }
   #timer { font-family: ui-monospace, Consolas, monospace; color: #dbfcff; letter-spacing: .08em; }
   .panel { inset: 0; text-align: center; display: flex; flex-direction: column; align-items: center; }
@@ -49,14 +50,14 @@
     h1 { font-size: 1.9rem; }
     .actions { bottom: max(5%, env(safe-area-inset-bottom)); }
   }
-.bug-guide {display:grid;gap:.6rem;padding:.85rem}.bug-entry {display:grid;grid-template-columns:82px 1fr;align-items:center;gap:.7rem;padding:.5rem;border-radius:10px;background:#2a2038}.bug-entry canvas {width:82px;height:62px}.bug-entry.size-preview {grid-template-columns:110px 1fr}.bug-entry.size-preview canvas {width:110px;height:140px}.bug-entry h3,.bug-entry p {margin:0}.bug-entry p {font-size:.88rem;color:#e5d3e8}
+.bug-guide {display:grid;gap:.6rem;padding:.85rem}.bug-entry {display:grid;grid-template-columns:82px minmax(0,1fr);align-items:center;gap:.7rem;padding:.5rem;border-radius:10px;background:#2a2038}.bug-entry canvas {width:82px;height:62px}.bug-entry.size-preview {grid-template-columns:var(--preview-width) minmax(0,1fr)}.bug-entry.size-preview canvas {width:var(--preview-width);height:var(--preview-height)}.bug-entry h3,.bug-entry p {margin:0}.bug-entry p {font-size:.88rem;color:#e5d3e8}
 </style>
 </head>
 <body>
 <main>
   <canvas aria-label="Ігрове поле. Торкайся слономошок, поки вони летять до Русі."></canvas>
   <div class="hud" hidden>
-    <div class="hearts" role="img" aria-label="3 сердечка"><span id="full">♥♥♥</span><span id="empty" class="empty"></span></div>
+    <div class="hearts" role="img" aria-label="3 сердечка"></div>
     <div class="stat" role="timer" aria-label="Час виживання" id="timer">00:00</div>
     <div class="stat">Збито <span id="score">0</span></div>
   </div>
@@ -90,6 +91,17 @@ const hearts = document.querySelector('.hearts');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const tau = Math.PI * 2;
 const maxHearts = 3;
+const heartIcons = Array.from({ length: maxHearts }, () => {
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('class', 'heart');
+  icon.setAttribute('aria-hidden', 'true');
+  const shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  shape.setAttribute('d', 'M12 21C9.5 19 2 14 2 8.5 2 5 4.4 2.5 7.6 2.5c1.9 0 3.4.9 4.4 2.3 1-1.4 2.5-2.3 4.4-2.3C19.6 2.5 22 5 22 8.5 22 14 14.5 19 12 21Z');
+  icon.append(shape);
+  return icon;
+});
+hearts.replaceChildren(...heartIcons);
 const ruskaSize = .85;
 const gameplayPace = 1.2;
 const hitCooldown = .45;
@@ -667,8 +679,7 @@ function start() {
 }
 
 function updateHud() {
-  document.querySelector('#full').textContent = '♥'.repeat(lives);
-  document.querySelector('#empty').textContent = '♡'.repeat(maxHearts - lives);
+  heartIcons.forEach((icon, index) => icon.classList.toggle('empty', index >= lives));
   hearts.setAttribute('aria-label', 'Сердечка: ' + lives + ' з ' + maxHearts);
   scoreLabel.textContent = score;
   updateTimer();
@@ -1045,6 +1056,14 @@ function drawBug(bug, lit) {
   ctx.restore();
 }
 
+const guidePreviewSizes = {
+  small: { width: 72, height: 66 },
+  large: { width: 82, height: 78 },
+  giant: { width: 94, height: 90 },
+  queen: { width: 105, height: 102 },
+  elephant: { width: 122, height: 116 }
+};
+
 function renderBugGuide() {
   const guide = document.querySelector('#bug-guide');
   if (guide.childElementCount) return;
@@ -1075,9 +1094,14 @@ function renderBugGuide() {
       const card = document.createElement('article');
       const sizePreview = sectionTitle === 'Розміри';
       card.className = sizePreview ? 'bug-entry size-preview' : 'bug-entry';
+      const previewSize = sizePreview ? guidePreviewSizes[sizeClass] : { width: 82, height: 62 };
+      if (sizePreview) {
+        card.style.setProperty('--preview-width', previewSize.width + 'px');
+        card.style.setProperty('--preview-height', previewSize.height + 'px');
+      }
       const preview = document.createElement('canvas');
-      preview.width = sizePreview ? 220 : 164;
-      preview.height = sizePreview ? 280 : 124;
+      preview.width = previewSize.width * 2;
+      preview.height = previewSize.height * 2;
       preview.setAttribute('aria-hidden', 'true');
       const copy = document.createElement('div');
       const title = document.createElement('h3');
@@ -1092,8 +1116,27 @@ function renderBugGuide() {
       if (!target) continue;
       const hits = bugSizes[sizeClass].hits;
       const bug = { x: 0, y: 0, type: sizePreview ? 'neutral' : type, sizeClass, hits, maxHits: hits, angle: 0, phase: 0 };
-      const zoom = sizePreview ? 2 : Math.min(3.1, 3.6 / bugSize(bug)) / scale;
-      target.setTransform(zoom, 0, 0, zoom, sizePreview ? 110 : 73, sizePreview ? 140 : sizeClass === 'queen' ? 76 : 58);
+      if (sizePreview) {
+        // Center every size inside its own canvas and reserve space for the crown and trunk.
+        const bounds = sizeClass === 'queen'
+          ? { left: -16, right: 19, top: -27, bottom: 18 }
+          : { left: -16, right: 19, top: -16, bottom: 19 };
+        const bugScale = bugSize(bug);
+        const illustrationScale = Math.min(
+          2.2,
+          (previewSize.width - 12) / ((bounds.right - bounds.left) * bugScale),
+          (previewSize.height - 12) / ((bounds.bottom - bounds.top) * bugScale)
+        );
+        const zoom = 2 * illustrationScale / scale;
+        target.setTransform(
+          zoom, 0, 0, zoom,
+          2 * (previewSize.width / 2 - (bounds.left + bounds.right) * illustrationScale * bugScale / 2),
+          2 * (previewSize.height / 2 - (bounds.top + bounds.bottom) * illustrationScale * bugScale / 2)
+        );
+      } else {
+        const zoom = Math.min(3.1, 3.6 / bugSize(bug)) / scale;
+        target.setTransform(zoom, 0, 0, zoom, 73, sizeClass === 'queen' ? 76 : 58);
+      }
       try {
         ctx = target;
         drawBug(bug, true);
