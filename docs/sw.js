@@ -1,12 +1,12 @@
 'use strict';
 
-const version = '1.0.1';
+const version = '1.0.2';
 const prefix = 'ruska:' + self.registration.scope + ':';
 const cacheName = prefix + version;
 const home = new URL('index.html', self.registration.scope).href;
 const assets = [
-  'index.html', 'manifest.webmanifest', 'icons/icon-192.png',
-  'icons/icon-512.png', 'icons/apple-touch-icon.png', 'icons/icon-maskable.png'
+  'index.html', 'manifest.webmanifest', 'icons/ruska/icon-192.png',
+  'icons/ruska/icon-512.png', 'icons/ruska/apple-touch-icon.png', 'icons/ruska/icon-maskable.png'
 ].map(path => new URL(path, self.registration.scope).href);
 
 self.addEventListener('install', event => {
